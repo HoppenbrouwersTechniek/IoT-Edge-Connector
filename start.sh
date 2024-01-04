@@ -50,7 +50,8 @@ banner
  
 checkInstalled curl
 
-read -p "Enter the Connection String for Azure IoT-Hub: " connectionString
+echo -e "Enter the Connection String for Azure IoT-Hub:"
+connectionString=$(sed 1q)
 if [[ -z "$connectionString" ]]; then
     echo "The connection string may not be empty, try again."
     exit 1
