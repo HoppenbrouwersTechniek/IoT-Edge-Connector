@@ -51,11 +51,11 @@ banner
 checkInstalled curl
  
 echo "Enter the Connection String for Azure IoT-Hub";
- 
-if [[ -z "$1" ]]; then
+read connectionString
+if [[ -z "$connectionString" ]]; then
     echo "The connection string may not be empty, try again."
     exit 1
-elif ! echo "$1" | grep "DeviceId=" &> /dev/null; then
+elif ! echo "$connectionString" | grep "DeviceId=" &> /dev/null; then
     echo "The connection is missing the device identifier, try again."
     exit 1
 fi
