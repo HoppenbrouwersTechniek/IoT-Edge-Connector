@@ -1,6 +1,6 @@
 #!/usr/bin/bash
  
-version="3.1"
+version="3.2"
  
 banner() {
     echo "";
