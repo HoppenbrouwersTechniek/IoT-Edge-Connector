@@ -1,5 +1,7 @@
 #!/usr/bin/bash
+ 
 version="3.0"
+ 
 banner() {
     echo "";
     echo " | |  | |                            | |                                           ";
@@ -17,6 +19,7 @@ banner() {
     echo -e "\n";
     echo "V${version}";
 }
+ 
 sucessBanner() {
     echo "Setup done!"
     echo " __ __   ____  __ __    ___      _____  __ __  ____       __ ";
@@ -28,46 +31,53 @@ sucessBanner() {
     echo "|__|__||__|__|  \_/  |_____|    |__|    \__,_||__|__|    |__|";
     echo "                                                             ";
 }
+ 
 checkInstalled() {
-    if [ ! which "$1" &> /dev/null ]; then
+    if ! which "$1" &> /dev/null ; then
         echo -e "\033[37;41;1;4m$1 not available, installation failed!\033[0m"
         exit 1
     else
         echo -e "\033[37;42m$1 is available.\033[0m"
     fi
 }
-getConnectionString() {
-    read connectionString
-    if [ -z "$connectionString" ]; then
-        echo "The connection string may not be empty, try again."
-        getConnectionString
-    elif [ ! echo "$connectionString" | grep "DeviceId=" &> /dev/null ]; then
-        echo "The connection is missing the device identifier, try again."
-        getConnectionString
-    fi
-}
-if [ ! lsb_release --id | grep Ubuntu &> /dev/null ]; then
+ 
+if ! lsb_release --id | grep Ubuntu &> /dev/null; then
     echo "This script is intended for Ubuntu, not $(lsb_release --id --short)!"
     exit 2
 fi
+ 
 banner
+ 
 checkInstalled curl
+ 
 echo "Enter the Connection String for Azure IoT-Hub";
-getConnectionString
+ 
+if [[ -z "$1" ]]; then
+    echo "The connection string may not be empty, try again."
+    exit 1
+elif ! echo "$1" | grep "DeviceId=" &> /dev/null; then
+    echo "The connection is missing the device identifier, try again."
+    exit 1
+fi
+ 
 echo -e "\033[30;47;1m(1/3) Installing IoT Edge...\033[0m";
+ 
 ubuntu_version=$(lsb_release --release --short)
 package_sources_url="https://packages.microsoft.com/config/ubuntu/${ubuntu_version}/packages-microsoft-prod.deb"
 echo "Downloading package from '$package_sources_url'"
-if [ ! curl -ssl "$package_sources_url" -o packages-microsoft-prod.deb ]; then
+curl -ssl "$package_sources_url" -o packages-microsoft-prod.deb
+if [[ ! -f "./packages-microsoft-prod.deb" ]]; then
     echo "Failed to get package sources from '$package_sources_url'."
     exit 3
 fi
 sudo dpkg -i packages-microsoft-prod.deb
 rm packages-microsoft-prod.deb
+ 
 echo -e "\033[30;47;1m(2/3) Installing container engine...\033[0m"
 sudo apt update
 sudo apt -y install moby-engine
 checkInstalled docker
+ 
 duration=0
 echo "Starting Docker"
 sudo systemctl restart docker
@@ -78,10 +88,13 @@ do
   ((duration++))
 done
 echo "Docker is active"
+ 
 echo -e "\033[30;47;1m(3/3) Installing IoT Edge runtime...\033[0m"
+ 
 sudo apt -y install aziot-edge
 checkInstalled iotedge
+ 
 sudo iotedge config mp --connection-string "$connectionString"
 sudo iotedge config apply
- 
-sudo iotedge check && sucessBanne
+
+sudo iotedge check && sucessBanner
