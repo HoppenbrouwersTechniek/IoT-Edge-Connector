@@ -1,7 +1,7 @@
 #!/usr/bin/bash
- 
-version="3.2"
- 
+
+version="4.0"
+
 banner() {
     echo "";
     echo " | |  | |                            | |                                           ";
@@ -19,7 +19,7 @@ banner() {
     echo -e "\n";
     echo "V${version}";
 }
- 
+
 sucessBanner() {
     echo "Setup done!"
     echo " __ __   ____  __ __    ___      _____  __ __  ____       __ ";
@@ -31,7 +31,7 @@ sucessBanner() {
     echo "|__|__||__|__|  \_/  |_____|    |__|    \__,_||__|__|    |__|";
     echo "                                                             ";
 }
- 
+
 checkInstalled() {
     if ! which "$1" &> /dev/null ; then
         echo -e "\033[37;41;1;4m$1 not available, installation failed!\033[0m"
@@ -40,18 +40,23 @@ checkInstalled() {
         echo -e "\033[37;42m$1 is available.\033[0m"
     fi
 }
- 
+
 if ! lsb_release --id | grep Ubuntu &> /dev/null; then
     echo "This script is intended for Ubuntu, not $(lsb_release --id --short)!"
     exit 2
 fi
- 
+
 banner
- 
+
 checkInstalled curl
 
-echo -e "Enter the Connection String for Azure IoT-Hub:"
-connectionString=$(sed 1q)
+if [[ ! -z "$1" ]]; then
+    connectionString="$1"
+else
+    echo -e "Enter the Connection String for Azure IoT-Hub:"
+    connectionString=$(sed 1q)
+fi
+
 if [[ -z "$connectionString" ]]; then
     echo "The connection string may not be empty, try again."
     exit 1
@@ -59,9 +64,9 @@ elif ! echo "$connectionString" | grep "DeviceId=" &> /dev/null; then
     echo "The connection is missing the device identifier, try again."
     exit 1
 fi
- 
+
 echo -e "\033[30;47;1m(1/3) Installing IoT Edge...\033[0m";
- 
+
 ubuntu_version=$(lsb_release --release --short)
 package_sources_url="https://packages.microsoft.com/config/ubuntu/${ubuntu_version}/packages-microsoft-prod.deb"
 echo "Downloading package from '$package_sources_url'"
@@ -72,12 +77,24 @@ if [[ ! -f "./packages-microsoft-prod.deb" ]]; then
 fi
 sudo dpkg -i packages-microsoft-prod.deb
 rm packages-microsoft-prod.deb
- 
+
 echo -e "\033[30;47;1m(2/3) Installing container engine...\033[0m"
 sudo apt update
 sudo apt -y install moby-engine
 checkInstalled docker
- 
+
+docker_config="/etc/docker/daemon.json"
+if [ -f "$docker_config" ]; then
+    echo "Docker daemon config already exists, skipping..."
+else
+    sudo sh -c "cat > $docker_config" <<-EOL
+{
+    "log-driver": "local"
+}
+EOL
+    echo "Created docker daemon config at '$docker_config'"
+fi
+
 duration=0
 echo "Starting Docker"
 sudo systemctl restart docker
@@ -88,12 +105,12 @@ do
   ((duration++))
 done
 echo "Docker is active"
- 
+
 echo -e "\033[30;47;1m(3/3) Installing IoT Edge runtime...\033[0m"
- 
+
 sudo apt -y install aziot-edge
 checkInstalled iotedge
- 
+
 sudo iotedge config mp --connection-string "$connectionString"
 sudo iotedge config apply
 
